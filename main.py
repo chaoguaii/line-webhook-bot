@@ -30,18 +30,16 @@ USER_SESSIONS = {}
 MATERIAL_COSTS = {}
 
 def load_material_costs():
-    """
-    ดึงข้อมูลวัสดุและราคาจาก Google Sheets จาก sheet "MATERIAL_COSTS"
-    (ข้อมูลเริ่มต้นที่แถวที่ 2 โดยคอลัมน์ A: Material, คอลัมน์ B: Cost)
-    """
+    print("Start loading MATERIAL_COSTS...")
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-    credentials, _ = google.auth.default(scopes=SCOPES)  # ใช้ ADC
+    credentials, _ = google.auth.default(scopes=SCOPES)
     service = build('sheets', 'v4', credentials=credentials)
     range_name = f"{MATERIAL_COSTS_SHEET}!A2:B"
     result = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=range_name
     ).execute()
+    print("Result from Sheets API:", result)
     values = result.get("values", [])
     costs = {}
     for row in values:
