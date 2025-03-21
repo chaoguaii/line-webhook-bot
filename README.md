@@ -11,7 +11,7 @@ This project uses a Virtual Environment (venv) to manage Python libraries in VS 
 
 :one: create file main.py สำหรับสร้าง code หลักในการเชื่อมต่อกับ line หรือ flow ต่างๆ ที่ต้องการ  
 :two: create file requirement.txt สำหรับระบุ library ที่จำเป็นต่อโปรเจค  
-:three: สร้าง environment สำหรับติดตั้ง library ที่จำเป็น [วิธีการสร้าง environment](#-Installation-and-Setup)!  
+:three: สร้าง environment สำหรับติดตั้ง library ที่จำเป็น [วิธีการสร้าง environment](#triangular_flag_on_post-installation-and-setup)!  
 :four: run คำสั่ง
 
 ```bash
