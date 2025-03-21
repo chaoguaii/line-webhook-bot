@@ -75,7 +75,7 @@ def webhook():
                 print(f"📩 ข้อความจาก {user_id}: {message_text}")
 
                 # คำสั่งสำหรับ Contact และ FAQ
-                if message_text.lower() == "ติดต่อ":
+                if message_text.lower() == "ติดต่อเรา":
                     send_contact_menu(user_id)
                     continue
                 if message_text.upper().startswith("FAQ"):
@@ -89,7 +89,7 @@ def webhook():
                     process_services(user_id, message_text)
                     continue
                 # คำสั่งเริ่มต้นการคำนวณ
-                if message_text.lower() == "เริ่มคำนวณ":
+                if message_text.lower() == "คำนวณราคา":
                     start_questionnaire(user_id)
                 else:
                     process_response(user_id, message_text)
@@ -330,7 +330,7 @@ def start_questionnaire(user_id):
 
 def process_response(user_id, message_text):
     if user_id not in USER_SESSIONS:
-        send_message(user_id, "⚠️ กรุณาเริ่มคำนวณโดยพิมพ์ 'เริ่มคำนวณ'")
+        send_message(user_id, "⚠️ กรุณาเริ่มคำนวณโดยพิมพ์ 'คำนวณราคา'")
         return
     step = USER_SESSIONS[user_id]["step"]
     if step == 1:
