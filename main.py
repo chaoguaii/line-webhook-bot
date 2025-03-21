@@ -464,12 +464,12 @@ def write_to_bigquery(user_id, material, size, quantity, volume, weight_kg, tota
     table_id = f"{project}.{BIGQUERY_DATASET}.{BIGQUERY_TABLE}"
     rows_to_insert = [{
         "user_id": user_id,
-        "material": [material],         # ส่งเป็น array
+        "material": material,
         "size": size,
         "quantity": quantity,
-        "volume": [volume],             # ส่งเป็น array
-        "weight_kg": [weight_kg],       # ส่งเป็น array
-        "total_cost": [total_cost],     # ส่งเป็น array
+        "volume": volume,
+        "weight_kg": weight_kg,
+        "total_cost": total_cost,
         "full_name": full_name,
         "tel": tel,
         "company": company,
