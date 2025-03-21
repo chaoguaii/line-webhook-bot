@@ -320,6 +320,7 @@ def start_questionnaire(user_id):
     )
 
 def process_response(user_id, message_text):
+    MATERIAL_COSTS = load_material_costs()
     if user_id not in USER_SESSIONS:
         send_message(user_id, "⚠️ กรุณาเริ่มคำนวณโดยพิมพ์ 'เริ่มคำนวณ'")
         return
