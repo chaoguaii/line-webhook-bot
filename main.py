@@ -32,12 +32,10 @@ MATERIAL_COSTS = {}
 def load_material_costs():
     """
     ดึงข้อมูลวัสดุและราคาจาก Google Sheets จาก sheet "MATERIAL_COSTS"
-    สมมุติว่า sheet นี้มี header ในแถวแรก และข้อมูลเริ่มที่แถวที่ 2 โดย:
-      - คอลัมน์ A: Material
-      - คอลัมน์ B: Cost
+    (ข้อมูลเริ่มต้นที่แถวที่ 2 โดยคอลัมน์ A: Material, คอลัมน์ B: Cost)
     """
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-    credentials, _ = google.auth.default(scopes=SCOPES)
+    credentials, _ = google.auth.default(scopes=SCOPES)  # ใช้ ADC
     service = build('sheets', 'v4', credentials=credentials)
     range_name = f"{MATERIAL_COSTS_SHEET}!A2:B"
     result = service.spreadsheets().values().get(
@@ -373,7 +371,6 @@ def process_response(user_id, message_text):
                 "ชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล"
             )
             return
-        # แยกข้อมูลส่วนตัวออกเป็น full_name, tel, company, email
         full_name, tel, company, email = info_parts
         USER_SESSIONS[user_id]["user_info"] = {
             "full_name": full_name,
@@ -460,7 +457,6 @@ def write_to_sheet(user_id, material, size, quantity, volume, weight_kg, total_c
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
     credentials, project_id = google.auth.default(scopes=SCOPES)
     service = build('sheets', 'v4', credentials=credentials)
-    # ปรับให้มีคอลัมน์สำหรับ full_name, tel, company, email
     values = [
         [user_id, material, size, quantity, volume, f"{weight_kg:.2f}", f"{total_cost:,.2f}", full_name, tel, company, email]
     ]
@@ -479,15 +475,14 @@ def write_to_bigquery(user_id, material, size, quantity, volume, weight_kg, tota
     client = bigquery.Client()
     project = client.project
     table_id = f"{project}.{BIGQUERY_DATASET}.{BIGQUERY_TABLE}"
-    # เพิ่มข้อมูลส่วนตัวเป็นคอลัมน์แยก
     rows_to_insert = [{
         "user_id": user_id,
-        "material": material,
+        "material": [material],        # ส่งเป็น array
         "size": size,
         "quantity": quantity,
-        "volume": volume,
-        "weight_kg": weight_kg,
-        "total_cost": total_cost,
+        "volume": [volume],            # ส่งเป็น array
+        "weight_kg": [weight_kg],      # ส่งเป็น array
+        "total_cost": [total_cost],    # ส่งเป็น array
         "full_name": full_name,
         "tel": tel,
         "company": company,
