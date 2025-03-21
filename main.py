@@ -37,7 +37,7 @@ def load_material_costs():
       - คอลัมน์ B: Cost (ราคา)
     """
     print("Start loading MATERIAL_COSTS...")
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
     credentials, _ = google.auth.default(scopes=SCOPES)
     service = build('sheets', 'v4', credentials=credentials)
     range_name = f"{MATERIAL_COSTS_SHEET}!A2:B"
