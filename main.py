@@ -36,8 +36,7 @@ def load_material_costs():
       - คอลัมน์ A: Material
       - คอลัมน์ B: Cost
     """
-    SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-    # ใช้ Application Default Credentials (ADC) ซึ่งจะได้จาก service account ที่แนบกับ Cloud Run
+    SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
     credentials, _ = google.auth.default(scopes=SCOPES)
     service = build('sheets', 'v4', credentials=credentials)
     range_name = f"{MATERIAL_COSTS_SHEET}!A2:B"
@@ -49,8 +48,7 @@ def load_material_costs():
     costs = {}
     for row in values:
         if len(row) >= 2:
-            # แปลงชื่อวัสดุให้เป็นตัวพิมพ์ใหญ่เพื่อความสอดคล้องในการตรวจสอบ
-            material = row[0].strip().upper()
+            material = row[0].strip()
             try:
                 cost = float(row[1].strip())
             except ValueError:
@@ -326,20 +324,19 @@ def start_questionnaire(user_id):
     )
 
 def process_response(user_id, message_text):
-    # ตรวจสอบและแปลงข้อความวัสดุเป็นตัวพิมพ์ใหญ่เพื่อให้ตรงกับข้อมูลใน MATERIAL_COSTS
     if user_id not in USER_SESSIONS:
         send_message(user_id, "⚠️ กรุณาเริ่มคำนวณโดยพิมพ์ 'เริ่มคำนวณ'")
         return
     step = USER_SESSIONS[user_id]["step"]
     if step == 1:
-        if message_text.strip().upper() not in MATERIAL_COSTS:
+        if message_text not in MATERIAL_COSTS:
             send_message(
                 user_id,
                 "❌ วัสดุไม่ถูกต้อง กรุณาเลือกจาก:\n"
                 "ABS, PC, Nylon, PP, PE, PVC, PET, PMMA, POM, PU"
             )
             return
-        USER_SESSIONS[user_id]["material"] = message_text.strip().upper()
+        USER_SESSIONS[user_id]["material"] = message_text
         USER_SESSIONS[user_id]["step"] = 2
         send_message(user_id, "กรุณากรอกขนาดชิ้นงาน (กว้างxยาวxสูง) cm\nตัวอย่าง: 10.5x4.5x3")
     elif step == 2:
@@ -376,6 +373,7 @@ def process_response(user_id, message_text):
                 "ชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล"
             )
             return
+        # แยกข้อมูลส่วนตัวออกเป็น full_name, tel, company, email
         full_name, tel, company, email = info_parts
         USER_SESSIONS[user_id]["user_info"] = {
             "full_name": full_name,
@@ -460,8 +458,9 @@ def calculate_cost(user_id):
 
 def write_to_sheet(user_id, material, size, quantity, volume, weight_kg, total_cost, full_name, tel, company, email):
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    credentials, _ = google.auth.default(scopes=SCOPES)
+    credentials, project_id = google.auth.default(scopes=SCOPES)
     service = build('sheets', 'v4', credentials=credentials)
+    # ปรับให้มีคอลัมน์สำหรับ full_name, tel, company, email
     values = [
         [user_id, material, size, quantity, volume, f"{weight_kg:.2f}", f"{total_cost:,.2f}", full_name, tel, company, email]
     ]
@@ -480,6 +479,7 @@ def write_to_bigquery(user_id, material, size, quantity, volume, weight_kg, tota
     client = bigquery.Client()
     project = client.project
     table_id = f"{project}.{BIGQUERY_DATASET}.{BIGQUERY_TABLE}"
+    # เพิ่มข้อมูลส่วนตัวเป็นคอลัมน์แยก
     rows_to_insert = [{
         "user_id": user_id,
         "material": material,
@@ -507,7 +507,6 @@ def send_message(user_id, text):
     print(f"📡 LINE Response: {response.status_code} {response.text}")
 
 if __name__ == "__main__":
-    # โหลดตารางวัสดุและราคาเมื่อเริ่มต้นบริการ
     MATERIAL_COSTS = load_material_costs()
     port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
