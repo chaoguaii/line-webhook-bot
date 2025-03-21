@@ -9,7 +9,7 @@ This project uses a Virtual Environment (venv) to manage Python libraries in VS 
 
 ## step dev code
 
-:one: create file main.py สำหรับสร้าง code หลักในการเชื่อมต่อกับ line หรือ flow ต่างๆ ที่ต้องการ  
+:one: create file main.py, Dockerfile สำหรับสร้าง code หลักในการเชื่อมต่อกับ line หรือ flow ต่างๆ ที่ต้องการ  
 :two: create file requirement.txt สำหรับระบุ library ที่จำเป็นต่อโปรเจค  
 :three: สร้าง environment สำหรับติดตั้ง library ที่จำเป็น [วิธีการสร้าง environment](#triangular_flag_on_post-installation-and-setup)!  
 :four: run คำสั่ง
@@ -30,6 +30,16 @@ git add .
 git commit -am "code main.py and library require"
 git push
 ```
+
+:six: Create service Cloud Run สำหรับ connect git และ run line webhook
+:seven: Add Variables & Secrets บน Google Cloud ประกอบด้วย
+
+```text
+# LINE
+LINE_ACCESS_TOKEN=LINE_ACCESS_TOKEN
+```
+
+:eight: สร้างตารางบน Bigquery
 
 ---
 
