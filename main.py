@@ -4,18 +4,18 @@ import os
 import google.auth
 from googleapiclient.discovery import build
 from google.cloud import bigquery  # สำหรับ BigQuery
-
-# สำหรับทดสอบ local
 from dotenv import load_dotenv
+
+# โหลด Environment Variables
 load_dotenv()
 
 app = Flask(__name__)
 
-# 🔹 โหลด Environment Variables (ตั้งค่าใน Cloud Run หรือ local)
+# Environment Variables
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")  # Spreadsheet ID ของ Google Sheets
-SHEET_NAME = os.getenv("SHEET_NAME", "Data")  # ชื่อ sheet สำหรับข้อมูลทั่วไป
-MATERIAL_COSTS_SHEET = "MATERIAL_COSTS"  # ชื่อ sheet สำหรับ MATERIAL_COSTS
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")  # ID ของ Google Sheets
+SHEET_NAME = os.getenv("SHEET_NAME", "Data")   # ชื่อ sheet สำหรับข้อมูลทั่วไป
+MATERIAL_COSTS_SHEET = "MATERIAL_COSTS"         # ชื่อ sheet สำหรับ MATERIAL_COSTS
 
 # สำหรับ BigQuery
 BIGQUERY_DATASET = os.getenv("BIGQUERY_DATASET")
@@ -23,13 +23,19 @@ BIGQUERY_TABLE = os.getenv("BIGQUERY_TABLE")
 
 print("LINE_ACCESS_TOKEN:", LINE_ACCESS_TOKEN)
 
-# 🔹 เก็บข้อมูล session ของผู้ใช้
+# เก็บข้อมูล session ของผู้ใช้
 USER_SESSIONS = {}
 
-# 🔹 ตารางราคาวัสดุ (บาท/kg) เริ่มต้น (จะถูกอัปเดตจาก Google Sheets)
+# ตารางราคาวัสดุ (จะถูกโหลดจาก Google Sheets)
 MATERIAL_COSTS = {}
 
 def load_material_costs():
+    """
+    ดึงข้อมูลวัสดุและราคาจาก Google Sheets จาก sheet MATERIAL_COSTS
+    โดยคาดว่าข้อมูลเริ่มที่แถวที่ 2 โดย:
+      - คอลัมน์ A: Material (ชื่อวัสดุ)
+      - คอลัมน์ B: Cost (ราคา)
+    """
     print("Start loading MATERIAL_COSTS...")
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
     credentials, _ = google.auth.default(scopes=SCOPES)
@@ -68,18 +74,21 @@ def webhook():
                 message_text = event["message"]["text"].strip()
                 print(f"📩 ข้อความจาก {user_id}: {message_text}")
 
+                # คำสั่งสำหรับ Contact และ FAQ
                 if message_text.lower() == "ติดต่อ":
                     send_contact_menu(user_id)
                     continue
                 if message_text.upper().startswith("FAQ"):
                     process_faq(user_id, message_text)
                     continue
+                # คำสั่งสำหรับ สินค้าและบริการ
                 if message_text.lower() == "สินค้าและบริการ":
                     send_services_menu(user_id)
                     continue
                 if message_text in ["บริการของเรา", "สินค้าตัวอย่าง", "กระบวนการผลิตสินค้า"]:
                     process_services(user_id, message_text)
                     continue
+                # คำสั่งเริ่มต้นการคำนวณ
                 if message_text.lower() == "เริ่มคำนวณ":
                     start_questionnaire(user_id)
                 else:
@@ -320,20 +329,19 @@ def start_questionnaire(user_id):
     )
 
 def process_response(user_id, message_text):
-    MATERIAL_COSTS = load_material_costs()
     if user_id not in USER_SESSIONS:
         send_message(user_id, "⚠️ กรุณาเริ่มคำนวณโดยพิมพ์ 'เริ่มคำนวณ'")
         return
     step = USER_SESSIONS[user_id]["step"]
     if step == 1:
-        if message_text not in MATERIAL_COSTS:
-            send_message(
-                user_id,
-                "❌ วัสดุไม่ถูกต้อง กรุณาเลือกจาก:\n"
-                "ABS, PC, Nylon, PP, PE, PVC, PET, PMMA, POM, PU"
-            )
+        # ใช้การเปรียบเทียบแบบไม่คำนึง case
+        material_input = message_text.strip().upper()
+        valid_materials = {mat.upper(): mat for mat in MATERIAL_COSTS.keys()}
+        if material_input not in valid_materials:
+            send_message(user_id,
+                "❌ วัสดุไม่ถูกต้อง กรุณาเลือกจาก:\nABS, PC, Nylon, PP, PE, PVC, PET, PMMA, POM, PU")
             return
-        USER_SESSIONS[user_id]["material"] = message_text
+        USER_SESSIONS[user_id]["material"] = valid_materials[material_input]
         USER_SESSIONS[user_id]["step"] = 2
         send_message(user_id, "กรุณากรอกขนาดชิ้นงาน (กว้างxยาวxสูง) cm\nตัวอย่าง: 10.5x4.5x3")
     elif step == 2:
@@ -349,26 +357,18 @@ def process_response(user_id, message_text):
             send_message(user_id, "❌ กรุณากรอกจำนวนที่ถูกต้อง เช่น 100")
     elif step == 4:
         if message_text.strip() == "ต้องการ":
-            send_message(
-                user_id,
-                "กรุณากรอกข้อมูลส่วนตัวของคุณ\n"
-                "รูปแบบ: ชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล"
-            )
+            send_message(user_id,
+                "กรุณากรอกข้อมูลส่วนตัวของคุณ\nรูปแบบ: ชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล")
             USER_SESSIONS[user_id]["step"] = 5
         else:
-            send_message(
-                user_id,
-                "ไม่ได้เลือกใบเสนอราคา\nหากต้องการใบเสนอราคา 'กรุณาทำรายการ' ใหม่"
-            )
+            send_message(user_id,
+                "ไม่ได้เลือกใบเสนอราคา\nหากต้องการใบเสนอราคา 'กรุณาทำรายการ' ใหม่")
             del USER_SESSIONS[user_id]
     elif step == 5:
         info_parts = [part.strip() for part in message_text.split(",")]
         if len(info_parts) != 4:
-            send_message(
-                user_id,
-                "❌ กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วนในรูปแบบ:\n"
-                "ชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล"
-            )
+            send_message(user_id,
+                "❌ กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วนในรูปแบบ:\nชื่อ-สกุล, เบอร์โทร, ชื่อบริษัท, อีเมล")
             return
         full_name, tel, company, email = info_parts
         USER_SESSIONS[user_id]["user_info"] = {
@@ -386,10 +386,7 @@ def process_response(user_id, message_text):
                 USER_SESSIONS[user_id]["volume"],
                 USER_SESSIONS[user_id]["weight_kg"],
                 USER_SESSIONS[user_id]["total_cost"],
-                full_name,
-                tel,
-                company,
-                email
+                full_name, tel, company, email
             )
             write_to_bigquery(
                 user_id,
@@ -399,20 +396,13 @@ def process_response(user_id, message_text):
                 USER_SESSIONS[user_id]["volume"],
                 USER_SESSIONS[user_id]["weight_kg"],
                 USER_SESSIONS[user_id]["total_cost"],
-                full_name,
-                tel,
-                company,
-                email
+                full_name, tel, company, email
             )
-            send_message(
-                user_id,
-                "🎉 ข้อมูลครบถ้วนแล้ว\nใบเสนอราคาจะส่งให้ทางอีเมลที่ระบุ\n(ภายใน 2-3 วันทำการ)"
-            )
+            send_message(user_id,
+                "🎉 ข้อมูลครบถ้วนแล้ว\nใบเสนอราคาจะส่งให้ทางอีเมลที่ระบุ\n(ภายใน 2-3 วันทำการ)")
         except Exception as e:
-            send_message(
-                user_id,
-                f"⚠️ เกิดข้อผิดพลาดในการบันทึกข้อมูลลง Google Sheets/BigQuery: {e}"
-            )
+            send_message(user_id,
+                f"⚠️ เกิดข้อผิดพลาดในการบันทึกข้อมูลลง Google Sheets/BigQuery: {e}")
         del USER_SESSIONS[user_id]
 
 def calculate_cost(user_id):
@@ -426,10 +416,8 @@ def calculate_cost(user_id):
         volume = dimensions[0] * dimensions[1] * dimensions[2]
         USER_SESSIONS[user_id]["volume"] = volume
     except Exception as e:
-        send_message(
-            user_id,
-            "❌ ขนาดชิ้นงานไม่ถูกต้อง\nโปรดใช้รูปแบบ เช่น 10.5x4.5x3"
-        )
+        send_message(user_id,
+            "❌ ขนาดชิ้นงานไม่ถูกต้อง\nโปรดใช้รูปแบบ เช่น 10.5x4.5x3")
         return
     material_cost_per_kg = MATERIAL_COSTS.get(material, 150)
     density = 1.05  # g/cm³
@@ -476,12 +464,12 @@ def write_to_bigquery(user_id, material, size, quantity, volume, weight_kg, tota
     table_id = f"{project}.{BIGQUERY_DATASET}.{BIGQUERY_TABLE}"
     rows_to_insert = [{
         "user_id": user_id,
-        "material": [material],        # ส่งเป็น array
+        "material": [material],         # ส่งเป็น array
         "size": size,
         "quantity": quantity,
-        "volume": [volume],            # ส่งเป็น array
-        "weight_kg": [weight_kg],      # ส่งเป็น array
-        "total_cost": [total_cost],    # ส่งเป็น array
+        "volume": [volume],             # ส่งเป็น array
+        "weight_kg": [weight_kg],       # ส่งเป็น array
+        "total_cost": [total_cost],     # ส่งเป็น array
         "full_name": full_name,
         "tel": tel,
         "company": company,
@@ -500,7 +488,12 @@ def send_message(user_id, text):
     print(f"📤 ส่งข้อความไปที่ {user_id}: {text}")
     print(f"📡 LINE Response: {response.status_code} {response.text}")
 
+if __name__ != "__main__":
+    # เมื่อถูก import (เช่นโดย WSGI server บน Cloud Run) ให้โหลด MATERIAL_COSTS ทันที
+    MATERIAL_COSTS = load_material_costs()
+
 if __name__ == "__main__":
+    # สำหรับ local ให้โหลด MATERIAL_COSTS ก่อนเริ่มแอป
     MATERIAL_COSTS = load_material_costs()
     port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
