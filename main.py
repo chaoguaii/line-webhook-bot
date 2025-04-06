@@ -400,6 +400,10 @@ def process_response(user_id, message_text):
             )
             send_message(user_id,
                 "🎉 ข้อมูลครบถ้วนแล้ว\nใบเสนอราคาจะส่งให้ทางอีเมลที่ระบุ\n(ภายใน 2-3 วันทำการ)")
+            # เพิ่มส่วนส่งลิงก์ Google Form เพื่อรับข้อเสนอแนะ
+            google_form_link = "https://forms.gle/8ytZXHVEmWPZAKmc7"  # เปลี่ยน URL ให้ถูกต้อง
+            send_message(user_id,
+                f"โปรดให้ข้อเสนอแนะกับเราได้ที่: {google_form_link}")
         except Exception as e:
             send_message(user_id,
                 f"⚠️ เกิดข้อผิดพลาดในการบันทึกข้อมูลลง Google Sheets/BigQuery: {e}")
